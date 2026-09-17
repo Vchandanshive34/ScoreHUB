@@ -1,5 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { API_URL, IS_UNCONFIGURED } from '@/lib/config';
+import { API_URL, IS_DEMO, IS_UNCONFIGURED } from '@/lib/config';
 
 /**
  * Catches anything thrown while rendering so a mistake shows a readable page
@@ -39,15 +39,26 @@ export class Boundary extends Component<{ children: ReactNode }, { error: Error 
   }
 }
 
-/** Shown when no backend URL has been set, instead of failing on every call. */
+/** A quiet strip explaining which mode the site is running in. */
 export function SetupNotice() {
-  if (!IS_UNCONFIGURED) return null;
+  if (IS_DEMO) {
+    return (
+      <div className="border-b border-brand-500/30 bg-brand-900/40 px-6 py-2 text-center text-xs text-brand-200">
+        <span className="font-semibold">Demo</span> — sample event data, running entirely in this
+        browser. Changes are not saved; refresh to reset.
+      </div>
+    );
+  }
 
-  return (
-    <div className="border-b border-amber-500/40 bg-amber-500/10 px-6 py-3 text-center text-xs text-amber-200">
-      No backend configured — edit <code className="font-semibold">config.js</code> beside
-      index.html and set <code className="font-semibold">apiUrl</code> and{' '}
-      <code className="font-semibold">socketUrl</code>. Currently calling {API_URL}.
-    </div>
-  );
+  if (IS_UNCONFIGURED) {
+    return (
+      <div className="border-b border-amber-500/40 bg-amber-500/10 px-6 py-3 text-center text-xs text-amber-200">
+        No backend configured — edit <code className="font-semibold">config.js</code> beside
+        index.html and set <code className="font-semibold">apiUrl</code> and{' '}
+        <code className="font-semibold">socketUrl</code>. Currently calling {API_URL}.
+      </div>
+    );
+  }
+
+  return null;
 }

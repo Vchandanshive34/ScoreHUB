@@ -1,4 +1,5 @@
-import { API_URL } from './config';
+import { API_URL, IS_DEMO } from './config';
+import { demoApi } from './demoBackend';
 import type {
   Bout,
   BoutInput,
@@ -75,7 +76,7 @@ async function request<T>(
   return payload.data;
 }
 
-export const api = {
+const liveApi = {
   auth: {
     /**
      * Officials available to sign in as.
@@ -156,3 +157,9 @@ export const api = {
 
   health: () => request<unknown>('/api/health'),
 };
+
+/**
+ * One object, two implementations. Screens import `api` and never know which
+ * is behind it, so the demo exercises the same code paths as production.
+ */
+export const api = (IS_DEMO ? (demoApi as unknown as typeof liveApi) : liveApi);

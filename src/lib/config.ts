@@ -14,7 +14,7 @@
 
 declare global {
   interface Window {
-    __SCOREHUB_CONFIG__?: { apiUrl?: string; socketUrl?: string };
+    __SCOREHUB_CONFIG__?: { apiUrl?: string; socketUrl?: string; demo?: boolean };
   }
 }
 
@@ -50,3 +50,13 @@ export const SOCKET_URL = socketResolved.configured
 
 /** True when neither config.js nor a build variable named a backend. */
 export const IS_UNCONFIGURED = !apiResolved.configured;
+
+/**
+ * Demo mode: everything is answered from memory by src/lib/demoBackend.ts.
+ *
+ * On by default when no backend is configured, so the site is presentable the
+ * moment it is deployed rather than showing connection errors. Set
+ * `demo: false` in config.js to get the real connection errors back.
+ */
+export const IS_DEMO =
+  runtimeConfig?.demo === true || (runtimeConfig?.demo !== false && IS_UNCONFIGURED);

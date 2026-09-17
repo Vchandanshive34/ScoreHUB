@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
-import { API_URL } from '@/lib/config';
+import { API_URL, IS_DEMO } from '@/lib/config';
 import { ApiError, api } from '@/lib/api';
 import { useSession } from '@/lib/session';
 import type { Role, User } from '@/lib/types';
@@ -143,7 +143,7 @@ export default function Login() {
         )}
 
         <p className="mt-8 text-center text-xs text-slate-500">
-          Connected to {API_URL}
+          {IS_DEMO ? 'Demo data — pick any name to explore' : `Connected to ${API_URL}`}
         </p>
       </div>
     </div>

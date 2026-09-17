@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
-import { SOCKET_URL } from './config';
+import { IS_DEMO, SOCKET_URL } from './config';
 
 /**
  * Keeps one bout's shared state in sync with the realtime server.
@@ -45,7 +45,70 @@ type State = {
   error: string | null;
 };
 
-export function useBoutSocket(args: JoinArgs | null) {
+/**
+ * Demo stand-in for the realtime server.
+ *
+ * The room is treated as already full — in a demo there is one person, not
+ * three tablets — so the waiting gate opens and the clock, the round lock and
+ * the finish all behave as they do live, without a socket.
+ */
+function useDemoBoutSocket(args: JoinArgs | null) {
+  const [roundStartedAt, setRoundStartedAt] = useState<number | null>(null);
+  const [round, setRound] = useState(args?.currentRound || 1);
+  const [roundLocked, setRoundLocked] = useState(false);
+  const [finished, setFinished] = useState<State['finished']>(null);
+  const [submitted, setSubmitted] = useState<string[]>([]);
+
+  const expected = args?.expectedJudges ?? 3;
+  const presence: Presence | null = args
+    ? {
+        boutId: args.boutId,
+        joined: expected,
+        expected,
+        ready: true,
+        participants: [{ userId: args.userId, name: args.name, role: args.role, seat: args.seat }],
+        status: roundStartedAt ? 'LIVE' : 'WAITING',
+        currentRound: round,
+        roundStartedAt,
+        roundDuration: args.roundDuration,
+        submitted,
+      }
+    : null;
+
+  return {
+    connected: true,
+    presence,
+    roundStartedAt,
+    round,
+    roundLocked,
+    finished,
+    error: null,
+    start: () => {
+      setRoundStartedAt(Date.now());
+      setRoundLocked(false);
+      setSubmitted([]);
+    },
+    pause: () => setRoundStartedAt(null),
+    nextRound: () => {
+      setRoundStartedAt(Date.now());
+      setRoundLocked(false);
+      setSubmitted([]);
+    },
+    announceSubmit: (submittedRound: number) => {
+      // Every seated judge turns their card in together in the demo.
+      setSubmitted(Array.from({ length: expected }, (_, i) => `judge-${i}`));
+      setRoundStartedAt(null);
+      setRoundLocked(true);
+      setRound(submittedRound + 1);
+    },
+    announceFinish: (resultType: string, winnerCorner: string | null) => {
+      setFinished({ resultType, winnerCorner });
+      setRoundStartedAt(null);
+    },
+  };
+}
+
+function useLiveBoutSocket(args: JoinArgs | null) {
   const socketRef = useRef<Socket | null>(null);
   const [state, setState] = useState<State>({
     connected: false,
@@ -143,4 +206,12 @@ export function useBoutSocket(args: JoinArgs | null) {
     announceFinish: (resultType: string, winnerCorner: string | null) =>
       socketRef.current?.emit('bout:finish', { boutId, resultType, winnerCorner }),
   };
+}
+
+/** Picks the real socket or the demo stand-in. Both hooks always run, so the
+ *  rule of hooks holds however the page is configured. */
+export function useBoutSocket(args: JoinArgs | null) {
+  const live = useLiveBoutSocket(IS_DEMO ? null : args);
+  const demo = useDemoBoutSocket(IS_DEMO ? args : null);
+  return IS_DEMO ? demo : live;
 }
