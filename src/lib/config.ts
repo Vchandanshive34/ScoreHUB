@@ -1,29 +1,52 @@
 /**
  * Where the backend lives.
  *
- * In development Vite reads these from `.env.local`; in CI they are build-time
- * variables. They are baked into the bundle at build time — a static site has
- * no server to read them at runtime — so changing a URL means rebuilding.
+ * Resolved in this order:
+ *   1. `config.js` beside index.html — editable on the deployed site, no rebuild
+ *   2. Vite build-time variables (VITE_API_URL / VITE_SOCKET_URL)
+ *   3. localhost, for `npm run dev`
+ *
+ * Runtime config comes first deliberately. A static site has no server to read
+ * environment variables, so anything baked in at build time can only be changed
+ * by rebuilding — which is the wrong shape when the site is deployed by
+ * committing files.
  */
 
-function required(value: string | undefined, name: string, fallback: string): string {
-  if (value && value.trim()) return value.trim().replace(/\/+$/, '');
-  if (import.meta.env.DEV) return fallback;
-  // Fail loudly in a production build rather than silently calling the wrong host.
-  console.error(
-    `[scorehub] ${name} is not set. The app will call ${fallback}, which is almost certainly wrong.`,
-  );
-  return fallback;
+declare global {
+  interface Window {
+    __SCOREHUB_CONFIG__?: { apiUrl?: string; socketUrl?: string };
+  }
 }
 
-export const API_URL = required(
-  import.meta.env.VITE_API_URL,
-  'VITE_API_URL',
-  'http://localhost:3000',
+function clean(value: string | undefined): string {
+  return (value ?? '').trim().replace(/\/+$/, '');
+}
+
+function resolve(runtime: string | undefined, buildTime: string | undefined): {
+  url: string;
+  configured: boolean;
+} {
+  const fromRuntime = clean(runtime);
+  if (fromRuntime) return { url: fromRuntime, configured: true };
+
+  const fromBuild = clean(buildTime);
+  if (fromBuild) return { url: fromBuild, configured: true };
+
+  return { url: 'http://localhost:3000', configured: false };
+}
+
+const runtimeConfig = typeof window !== 'undefined' ? window.__SCOREHUB_CONFIG__ : undefined;
+
+const apiResolved = resolve(runtimeConfig?.apiUrl, import.meta.env.VITE_API_URL);
+const socketResolved = resolve(
+  runtimeConfig?.socketUrl,
+  import.meta.env.VITE_SOCKET_URL,
 );
 
-export const SOCKET_URL = required(
-  import.meta.env.VITE_SOCKET_URL,
-  'VITE_SOCKET_URL',
-  'http://localhost:4000',
-);
+export const API_URL = apiResolved.url;
+export const SOCKET_URL = socketResolved.configured
+  ? socketResolved.url
+  : 'http://localhost:4000';
+
+/** True when neither config.js nor a build variable named a backend. */
+export const IS_UNCONFIGURED = !apiResolved.configured;

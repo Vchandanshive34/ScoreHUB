@@ -1,5 +1,6 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import AppShell from '@/components/AppShell';
+import { Boundary, SetupNotice } from '@/components/Boundary';
 import Bouts from '@/pages/Bouts';
 import BoutEditor from '@/pages/BoutEditor';
 import Dashboard from '@/pages/Dashboard';
@@ -17,8 +18,10 @@ import { SessionProvider } from '@/lib/session';
 
 export default function App() {
   return (
-    <SessionProvider>
-      <HashRouter>
+    <Boundary>
+      <SetupNotice />
+      <SessionProvider>
+        <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
 
@@ -42,8 +45,9 @@ export default function App() {
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </HashRouter>
-    </SessionProvider>
+          </Routes>
+        </HashRouter>
+      </SessionProvider>
+    </Boundary>
   );
 }
